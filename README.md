@@ -5,7 +5,7 @@ A BitTorrent-like P2P file sharing program written in Python 3.
 ## Team
 - Sivan Pushpagiri
 - Sara Lin
-- TODO: add other team members
+- Finn Walker
 
 ## Running
 
@@ -31,3 +31,4 @@ Each peer writes its log to `log_peer_<peerID>.log`.
 | `config.py` | Parses and validates `Common.cfg` and `PeerInfo.cfg` |
 | `peer.py` | Peer process: server socket, outgoing connections, shared state |
 | `connection.py` | One TCP connection to a neighbor (reader + writer threads) |
+| `messages.py` | Message types and parsing to/from bytes

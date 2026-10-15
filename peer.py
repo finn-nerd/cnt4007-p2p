@@ -6,9 +6,10 @@ import os
 import socket
 import threading
 import time
+import struct
 
 from connection import PeerConnection
-from messages import Handshake, HANDSHAKE_LENGTH
+from messages import parse_message, Handshake, HANDSHAKE_LENGTH
 
 RETRIES = 10       # how many times to try connecting to a peer
 RETRY_DELAY = 1    # seconds between tries
@@ -223,20 +224,20 @@ class Peer:
 
     def handle_message(self, conn):
         # read one message and handle it based on its type
-
-        msg_len = int.from_bytes(conn.recv_exact(4), byteorder="big")
-
+        
         # verify message length is non-zero/negative
+        msg_len = struct.unpack(">I", conn.recv_exact(4))[0]
         if msg_len < 1:
             raise ValueError("Invalid message length.")
-        
-        msg_type = conn.recv_exact(1)[0]
 
+        # parse type and payload
+        msg_type = conn.recv_exact(1)[0]
         payload = conn.recv_exact(msg_len - 1)
 
-        message = parse_message(msg_type, payload)
+        message = parse_message(msg_type, payload, self.common.num_pieces)
 
         # TODO: handle message after parsing
+        print(f"MESSAGE: --------------------------\n{message}\n-----------------------------------")
 
     def connection_closed(self, conn):
         with self.conn_lock:
