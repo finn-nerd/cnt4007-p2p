@@ -4,6 +4,7 @@ A BitTorrent-like P2P file sharing program written in Python 3.
 
 ## Team
 - Sivan Pushpagiri
+- Sara Lin
 - TODO: add other team members
 
 ## Running

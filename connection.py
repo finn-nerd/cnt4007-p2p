@@ -74,7 +74,7 @@ class PeerConnection:
             self.peer.on_connect(self)  # handshake happens here
             while not self.closed:
                 self.peer.handle_message(self)
-        except (ConnectionClosed, OSError):
+        except (ConnectionClosed, OSError, ValueError):
             pass
         finally:
             self.close()

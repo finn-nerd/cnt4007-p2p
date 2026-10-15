@@ -8,6 +8,7 @@ import threading
 import time
 
 from connection import PeerConnection
+from messages import Handshake, HANDSHAKE_LENGTH
 
 RETRIES = 10       # how many times to try connecting to a peer
 RETRY_DELAY = 1    # seconds between tries
@@ -179,14 +180,63 @@ class Peer:
     # these get called by the connection's reader thread
 
     def on_connect(self, conn):
-        # TODO handshake: send ours, read theirs
-        # for incoming connections set conn.remote_id and call add_connection(conn)
-        pass
+        # handshake: send/receive the handshake message between peers
+
+        # initialize handshake message with peer's id
+        handshake = Handshake(self.peer_id)
+
+        # if peer connection is outgoing, send the handshake message and wait to recieve the handshake ack from other peer
+        if conn.outgoing:
+            conn.send(handshake.to_bytes())
+
+            ack_msg = conn.recv_exact(HANDSHAKE_LENGTH)
+
+            # get other peer's id from the ack message
+            other_id = handshake.from_bytes(ack_msg).peer_id
+
+            # verify whether other_id from ack_msg is the same id as the id of the peer in the connection
+            if other_id != conn.remote_id:
+                raise ValueError(f"Expected neighbor id ({conn.remote_id}) does not match received neighbor id ({other_id}).")
+
+            return
+        # otherwise, wait for a handshake message and send an ack message to other peer
+        else:
+            recieved_msg = conn.recv_exact(HANDSHAKE_LENGTH)
+
+            other_id = handshake.from_bytes(recieved_msg).peer_id
+
+            # verify that other_id from received_msg is the same id as the id of the peer in the connection
+            if other_id not in [p.peer_id for p in self.peers_after_me()]:
+                raise ValueError(f"Unexpected peer ID: {other_id}")
+
+            # set the connection's remote_id and add connection to this peer's connections
+            conn.remote_id = other_id
+            self.add_connection(conn)
+
+            conn.send(handshake.to_bytes())
+
+            self.logger.info(
+                f"Peer {self.peer_id} is connected from Peer {other_id}."
+            )
+
+            return
 
     def handle_message(self, conn):
-        # TODO read one message and handle it based on its type
-        # for now just read a byte at a time so the connection stays open
-        conn.recv_exact(1)
+        # read one message and handle it based on its type
+
+        msg_len = int.from_bytes(conn.recv_exact(4), byteorder="big")
+
+        # verify message length is non-zero/negative
+        if msg_len < 1:
+            raise ValueError("Invalid message length.")
+        
+        msg_type = conn.recv_exact(1)[0]
+
+        payload = conn.recv_exact(msg_len - 1)
+
+        message = parse_message(msg_type, payload)
+
+        # TODO: handle message after parsing
 
     def connection_closed(self, conn):
         with self.conn_lock:
